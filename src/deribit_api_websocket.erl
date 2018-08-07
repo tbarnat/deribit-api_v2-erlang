@@ -104,10 +104,10 @@ handle_info({gun_ws, _Pid, {text, Text}}, #state{ pids_map = PidsMap, notificati
   Result = case Json of
     #{ <<"notifications">> := Notifications       } -> {notifications, Notifications};
     #{ <<"success">> := true,  <<"message">> := <<"">>, <<"result">>  := R } -> {ok, R};
+    #{ <<"success">> := true,  <<"result">> := <<"pong">> } -> {pong};
     #{ <<"success">> := true,  <<"message">> := M } -> {ok, M};
     #{ <<"success">> := true,  <<"result">>  := R } -> {ok, R};
     #{ <<"success">> := false, <<"message">> := M } -> {error, M};
-    #{ <<"id">>  := 0, <<"result">> := <<"pong">> } -> {pong};
     _ -> {error, <<"unknown response">>}
   end,
 
