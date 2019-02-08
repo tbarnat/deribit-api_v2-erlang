@@ -84,8 +84,8 @@ close(Connection) ->
                     instrument := instrument(),
                     quantity   := number(),
                     price      := number(),
-                    post_only  := boolean(),
-                    label      := string() | binary()
+                    post_only  => boolean(),
+                    label      => string() | binary()
                    }.
 buy(Connection, Params) when is_map(Params) ->
   request(Connection, "/api/v1/private/buy", Params).
@@ -95,8 +95,8 @@ buy(Connection, Params) when is_map(Params) ->
                     instrument := instrument(),
                     quantity   := number(),
                     price      := number(),
-                    post_only  := boolean(),
-                    label      := string() | binary()
+                    post_only  => boolean(),
+                    label      => string() | binary()
                   }.
 buy(Connection, Params, Options) when is_map(Params), is_list(Options)  ->
   request(Connection, "/api/v1/private/buy", Params, Options).
@@ -106,8 +106,8 @@ buy(Connection, Params, Options) when is_map(Params), is_list(Options)  ->
                   instrument := instrument(),
                   quantity   := number(),
                   price      := number(),
-                  post_only  := boolean(),
-                  label      := string() | binary()
+                  post_only  => boolean(),
+                  label      => string() | binary()
                  }.
 sell(Connection, Params) when is_map(Params)  ->
   request(Connection, "/api/v1/private/sell", Params).
@@ -115,8 +115,8 @@ sell(Connection, Params) when is_map(Params)  ->
 -spec sell(connection(), Params, options()) -> result() when
   Params     :: #{ instrument := instrument(),
                    quantity   := number(),
-                   post_only  := boolean(),
-                   label      := string() | binary()
+                   post_only  => boolean(),
+                   label      => string() | binary()
                  }.
 sell(Connection, Params, Options) when is_map(Params), is_list(Options)  ->
   request(Connection, "/api/v1/private/sell", Params, Options).
@@ -159,7 +159,7 @@ edit(Connection, Params) when is_map(Params)  ->
 
 -spec edit(connection(), Params, options()) -> result() when
   Params     :: #{
-                  orderId  := integer() | string(),
+                  orderId  := integer(),
                   quantity := number(),
                   price    := number()
                 }.
@@ -168,16 +168,16 @@ edit(Connection, Params, Options) when is_map(Params), is_list(Options)  ->
 
 -spec getopenorders(connection(), Params) -> result() when
   Params     :: #{
-                  instrument := instrument(),
-                  orderId    := integer()
+                  instrument => instrument(),
+                  orderId    => integer()
                 }.
 getopenorders(Connection, Params) when is_map(Params)  ->
   request(Connection, "/api/v1/private/getopenorders", Params).
 
 -spec getopenorders(connection(), Params, options()) -> result() when
   Params     :: #{
-                  instrument := instrument(),
-                  orderId    := integer()
+                  instrument => instrument(),
+                  orderId    => integer()
                 }.
 getopenorders(Connection, Params, Options) when is_map(Params), is_list(Options)  ->
   request(Connection, "/api/v1/private/getopenorders", Params, Options).
@@ -208,8 +208,8 @@ orderhistory(Connection, Count, Options) when is_integer(Count) ->
 -spec tradehistory(connection(), Params) -> result() when
   Params     :: #{
                   instrument   := instrument() | all | futures | options,
-                  count        := integer(),
-                  startTradeId := trade_id()
+                  count        => integer(),
+                  startTradeId => trade_id()
                 }.
 tradehistory(State, Params) when is_map(Params)  ->
   request(State, "/api/v1/private/tradehistory", Params).
@@ -217,8 +217,8 @@ tradehistory(State, Params) when is_map(Params)  ->
 -spec tradehistory(connection(), Params, options()) -> result() when
   Params     :: #{
                   instrument   := instrument() | all | futures | options,
-                  count        := integer(),
-                  startTradeId := trade_id()
+                  count        => integer(),
+                  startTradeId => trade_id()
                 }.
 tradehistory(Connection, Params, Options) when is_map(Params), is_list(Options)  ->
   request(Connection, "/api/v1/private/tradehistory", Params, Options).
@@ -271,8 +271,8 @@ index(Connection, Currency, Options) when is_atom(Currency) andalso is_list(Opti
 -spec getlasttrades(connection(), Params) -> result() when
   Params     :: #{
                   instrument := instrument(),
-                  since      := trade_id(),
-                  count      := integer()
+                  since      => trade_id(),
+                  count      => integer()
                 }.
 getlasttrades(Connection, Params) when is_map(Params)  ->
   request(Connection, "/api/v1/public/getlasttrades", Params).
@@ -280,8 +280,8 @@ getlasttrades(Connection, Params) when is_map(Params)  ->
 -spec getlasttrades(connection(), Params, options()) -> result() when
   Params     :: #{
                   instrument := instrument(),
-                  since      := trade_id(),
-                  count      := integer()
+                  since      => trade_id(),
+                  count      => integer()
                 }.
 getlasttrades(Connection, Params, Options) when is_map(Params), is_list(Options) ->
   request(Connection, "/api/v1/public/getlasttrades", Params, Options).
