@@ -1,18 +1,10 @@
 {"1.1.0",
-[{<<"cowlib">>,
-  {git,"https://github.com/ninenines/cowlib",
-       {ref,"07cde7c6def6eeed0174b270229e7d5175673d87"}},
-  1},
- {<<"gun">>,
-  {git,"https://github.com/ninenines/gun.git",
-       {ref,"bc733a2ca5f7d07f997ad6edf184f775b23434aa"}},
-  0},
- {<<"jiffy">>,{pkg,<<"jiffy">>,<<"0.14.11">>},0},
- {<<"ranch">>,
-  {git,"https://github.com/ninenines/ranch",
-       {ref,"a004ad710eddd0c21aaccc30d5633a76b06164b5"}},
-  1}]}.
+[{<<"cowlib">>,{pkg,<<"cowlib">>,<<"2.6.0">>},1},
+ {<<"gun">>,{pkg,<<"gun">>,<<"1.3.2">>},0},
+ {<<"jiffy">>,{pkg,<<"jiffy">>,<<"1.0.4">>},0}]}.
 [
 {pkg_hash,[
- {<<"jiffy">>, <<"919A87D491C5A6B5E3BBC27FAFEDC3A0761CA0B4C405394F121F582FD4E3F0E5">>}]}
+ {<<"cowlib">>, <<"8AA629F81A0FC189F261DC98A42243FA842625FEEA3C7EC56C48F4CCDB55490F">>},
+ {<<"gun">>, <<"542064CBB9F613650B8A8100B3A927505F364FBE198B7A5A112868FF43F3E477">>},
+ {<<"jiffy">>, <<"72ADEFF75C52A2FF07DE738F0813768ABE7CE158026CC1115A170340259C0CAA">>}]}
 ].
