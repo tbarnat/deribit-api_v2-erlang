@@ -99,7 +99,7 @@ handle_info(ping, #state{last_pong = LastPong} = State) ->
       {noreply, State#state{ ping_timer = PingTimer }}
   end;
 
-handle_info({gun_ws, _Pid, {text, Text}}, #state{ pids_map = PidsMap, notifications_pid = NotificationsPid } = State) ->
+handle_info({gun_ws, _Pid, _Ref, {text, Text}}, #state{ pids_map = PidsMap, notifications_pid = NotificationsPid } = State) ->
   Json = jiffy:decode(binary_to_list(Text), [return_maps]),
   Result = case Json of
     #{ <<"notifications">> := Notifications       } -> {notifications, Notifications};
@@ -135,7 +135,7 @@ handle_info({gun_ws, _Pid, {text, Text}}, #state{ pids_map = PidsMap, notificati
           {noreply, State#state{pids_map = maps:remove(Id, PidsMap)}}
       end
   end;
-handle_info({gun_ws_upgrade, _ConnPid, ok, _Headers}, #state{ parent = Parent } = State) ->
+handle_info({gun_upgrade, _ConnPid, _Ref, _Protocols, _Headers}, #state{ parent = Parent } = State) ->
   PingTimer = erlang:send_after(?DERIBIT_PING_TIME, self(), ping),
   Parent ! {self(), connection_up},
   {noreply, State#state{state = up, ping_timer = PingTimer, last_pong = os:timestamp()}};
