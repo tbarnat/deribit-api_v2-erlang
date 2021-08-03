@@ -10,8 +10,8 @@ _*
 ebin
 log
 erl_crash.dump
-.rebar
 logs
 _build
 .idea
 rebar3.crashdump
+deribit-api_v2-erlang.iml
