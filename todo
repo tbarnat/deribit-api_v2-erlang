@@ -1,11 +1,8 @@
 
-0) test-run
-
-1) compilation suggestions
-src/deribit_api.erl:66: Warning: http_uri:parse/2 is deprecated and will be removed in OTP 25; use use uri_string functions instead
-src/deribit_api.erl:66: Warning: http_uri:scheme_defaults/0 is deprecated and will be removed in OTP 25; use use uri_string functions instead
-
-
-
+0) fix auth
+1) remove pongs
 ...
 9) update readme
+
+optional?
+10) set heartbeat in api_websocket
