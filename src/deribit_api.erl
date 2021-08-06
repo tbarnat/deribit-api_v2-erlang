@@ -2,7 +2,7 @@
 
 -export([
 %% only essentials
-  open/0, open/1, open/2, open/3,
+  open/0, open/1, open/2,
   close/1,
   buy/2, buy/3,
   sell/2, sell/3,
@@ -22,48 +22,45 @@
 
 ]).
 
--type connection()         :: pid().
--type connection_options() :: websocket | http | url().
--type url()                :: string().
--type currency ()          :: btc | eth | usdt.
--type instrument()         :: string() | binary().
--type instrument_kind()    :: future | option.
--type params()             :: any(). %% This is just a placeholder; The specific params definition is made for a preceding no-option function
--type result()             :: {ok, any()} | {error, any()} | reference() | ok.
--type option()             :: {async} | {async, fun( (result()) -> ok )}.
--type options()            :: list(option()).
+-type connection()            :: pid().
+-type connection_options()    :: websocket | http | url().
+-type access_key()            :: string().
+-type access_secret()         :: string().
+-type authorize_credentials() :: { access_key(), access_secret() }.
+-type url()                   :: string().
+-type currency ()             :: btc | eth | usdt.
+-type instrument()            :: string() | binary().
+-type instrument_kind()       :: future | option.
+-type params()                :: any(). %% This is just a placeholder; The specific params definition is made for a preceding no-option function
+-type result()                :: {ok, any()} | {error, any()} | reference() | ok.
+-type option()                :: {async} | {async, fun( (result()) -> ok )}.
+-type options()               :: list(option()).
+
 
 -spec open() -> Result when
   Result     :: {ok, connection()} | {error, Reason},
   Reason     :: string() | binary().
 open() ->
-  open("", "", websocket).
+  open(websocket, {}).
 
--spec open(connection_options()) -> Result when
-  Result     :: {ok, connection()} | {error, Reason},
-  Reason     :: string() | binary().
-open(Mode) ->
-  open("", "", Mode).
 
--spec open(AccessKey, AccessSecret) -> Result when
-  AccessKey    :: string(),
-  AccessSecret :: string(),
+-spec open(Credentials) -> Result when
+  Credentials  :: authorize_credentials(),
   Result       :: {ok, connection()} | {error, Reason},
   Reason       :: string() | binary().
-open(AccessKey, AccessSecret) ->
-  open(AccessKey, AccessSecret, websocket).
+open({AccessKey, AccessSecret}) ->
+  open(websocket, {AccessKey, AccessSecret}).
 
--spec open(AccessKey, AccessSecret, connection_options()) -> Result when
-  AccessKey    :: string(),
-  AccessSecret :: string(),
+
+-spec open(connection_options(), Credentials) -> Result when
+  Credentials  :: authorize_credentials(),
   Result       :: {ok, connection()} | {error, Reason},
   Reason       :: string() | binary().
-
-open(AccessKey, AccessSecret, http) ->
-  open(AccessKey, AccessSecret, "https://www.deribit.com");
-open(AccessKey, AccessSecret, websocket) ->
-  open(AccessKey, AccessSecret, "wss://www.deribit.com/ws/api/v2");
-open(AccessKey, AccessSecret, Url) ->
+open(http, Credentials) ->
+  open("https://www.deribit.com", Credentials);
+open(websocket, Credentials) ->
+  open("wss://www.deribit.com/ws/api/v2", Credentials);
+open(Url, Credentials) ->
   UriMap = uri_string:parse(Url),
   Scheme = maps:get(scheme, UriMap, "wss"),
   case Scheme of
@@ -72,18 +69,7 @@ open(AccessKey, AccessSecret, Url) ->
       ConnectionResult = deribit_api_websocket:start(Host, 443),
       case ConnectionResult of
         {ok, ConnectionPid} ->
-          AuthParams = #{
-            grant_type => <<"client_credentials">>,
-            client_id => list_to_binary(AccessKey),
-            client_secret => list_to_binary(AccessSecret)
-          },
-          AuthResult = request(ConnectionPid, "public/auth", AuthParams),
-          case AuthResult of
-            {ok, _} ->
-              {ok, ConnectionPid};
-            AuthError ->
-              {error, {could_not_auth_the_ws_connection, AuthError}}
-          end;
+          possibly_authorize_connection(ConnectionPid, Credentials);
         Error ->
           Error
       end;
@@ -93,6 +79,23 @@ open(AccessKey, AccessSecret, Url) ->
       {error, rest_api_not_supported__use_websocket};
     _ ->
       {error, wrong_url}
+  end.
+
+%% private function
+possibly_authorize_connection(ConnectionPid, {}) ->
+  {ok, ConnectionPid};
+possibly_authorize_connection(ConnectionPid, {AccessKey,AccessSecret}) ->
+  AuthParams = #{
+    grant_type => <<"client_credentials">>,
+    client_id => list_to_binary(AccessKey),
+    client_secret => list_to_binary(AccessSecret)
+  },
+  AuthResult = request(ConnectionPid, "public/auth", AuthParams),
+  case AuthResult of
+    {ok, _} ->
+      {ok, ConnectionPid};
+    AuthError ->
+      {error, {could_not_auth_the_ws_connection, AuthError}}
   end.
 
 -spec close(connection()) -> ok.

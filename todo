@@ -1,8 +1,0 @@
-
-0) fix auth
-1) remove pongs
-...
-9) update readme
-
-optional?
-10) set heartbeat in api_websocket
