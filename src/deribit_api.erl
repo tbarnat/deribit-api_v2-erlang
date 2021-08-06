@@ -232,7 +232,7 @@ cancel_all_by_instrument(Connection, Params, Options) when is_list(Options) ->
 cancel_all_by_currency(Connection, Params) ->
   cancel_all_by_currency(Connection, Params, []).
 
--spec cancel(connection(), params(), options()) -> result().
+-spec cancel_all_by_currency(connection(), params(), options()) -> result().
 cancel_all_by_currency(Connection, Params, Options) when is_list(Options) ->
   request(Connection, "private/cancel_all_by_currency", Params, Options).
 
