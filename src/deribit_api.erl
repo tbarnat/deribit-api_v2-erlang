@@ -122,7 +122,7 @@ buy(Connection, Params) when is_map(Params) ->
   buy(Connection, Params, []).
 
 -spec buy(connection(), params(), options()) -> result().
-buy(Connection, Params, Options) when is_map(Params), is_list(Options)  ->
+buy(Connection, Params, Options) when is_map(Params)  ->
   request(Connection, "private/buy", Params, Options).
 
 %% ==============================================================
@@ -144,11 +144,11 @@ buy(Connection, Params, Options) when is_map(Params), is_list(Options)  ->
     advanced          => usd | implv,
     mmp               => boolean()
   }.
-sell(Connection, Params) when is_map(Params)  ->
+sell(Connection, Params) ->
   sell(Connection, Params, []).
 
 -spec sell(connection(), params(), options()) -> result().
-sell(Connection, Params, Options) when is_map(Params), is_list(Options)  ->
+sell(Connection, Params, Options) ->
   request(Connection, "private/sell", Params, Options).
 
 %% ==============================================================
@@ -165,11 +165,11 @@ sell(Connection, Params, Options) when is_map(Params), is_list(Options)  ->
     trigger_price     => number(),
     mmp               => boolean()
   }.
-edit(Connection, Params) when is_map(Params)  ->
+edit(Connection, Params) ->
   edit(Connection, Params, []).
 
 -spec edit(connection(), params(), options()) -> result().
-edit(Connection, Params, Options) when is_map(Params), is_list(Options)  ->
+edit(Connection, Params, Options) ->
   request(Connection, "private/edit", Params, Options).
 
 %% ==============================================================
@@ -187,11 +187,11 @@ edit(Connection, Params, Options) when is_map(Params), is_list(Options)  ->
   trigger_price     => number(),
   mmp               => boolean()
   }.
-edit_by_label(Connection, Params) when is_map(Params)  ->
+edit_by_label(Connection, Params) ->
   edit_by_label(Connection, Params, []).
 
 -spec edit_by_label(connection(), params(), options()) -> result().
-edit_by_label(Connection, Params, Options) when is_map(Params), is_list(Options)  ->
+edit_by_label(Connection, Params, Options)  ->
   request(Connection, "private/edit_by_label", Params, Options).
 
 %% ==============================================================
@@ -204,7 +204,7 @@ cancel(Connection, Params) ->
   cancel(Connection, Params, []).
 
 -spec cancel(connection(), params(), options()) -> result().
-cancel(Connection, Params, Options) when is_list(Options) ->
+cancel(Connection, Params, Options) ->
   request(Connection, "private/cancel", Params, Options).
 
 %% ==============================================================
@@ -218,7 +218,7 @@ cancel_all_by_instrument(Connection, Params) ->
   cancel_all_by_instrument(Connection, Params, []).
 
 -spec cancel_all_by_instrument(connection(), params(), options()) -> result().
-cancel_all_by_instrument(Connection, Params, Options) when is_list(Options) ->
+cancel_all_by_instrument(Connection, Params, Options) ->
   request(Connection, "private/cancel_all_by_instrument", Params, Options).
 
 %% ==============================================================
@@ -233,7 +233,7 @@ cancel_all_by_currency(Connection, Params) ->
   cancel_all_by_currency(Connection, Params, []).
 
 -spec cancel_all_by_currency(connection(), params(), options()) -> result().
-cancel_all_by_currency(Connection, Params, Options) when is_list(Options) ->
+cancel_all_by_currency(Connection, Params, Options) ->
   request(Connection, "private/cancel_all_by_currency", Params, Options).
 
 %% ==============================================================
@@ -243,7 +243,7 @@ cancel_all(Connection) ->
   cancel_all(Connection, []).
 
 -spec cancel_all(connection(), options()) -> result().
-cancel_all(Connection, Options) when is_list(Options) ->
+cancel_all(Connection, Options) ->
   request(Connection, "private/cancel_all", Options).
 
 %% ==============================================================
@@ -253,11 +253,11 @@ cancel_all(Connection, Options) when is_list(Options) ->
     currency   := currency(),
     extended   => boolean()
   }.
-get_account_summary(Connection, Params) when is_map(Params) ->
+get_account_summary(Connection, Params) ->
   get_account_summary(Connection, Params, []).
 
 -spec get_account_summary(connection(), params(), options()) -> result().
-get_account_summary(Connection, Params, Options) when is_list(Options) ->
+get_account_summary(Connection, Params, Options) ->
   request(Connection, "private/get_account_summary", Params, Options).
 
 %% ==============================================================
@@ -267,10 +267,10 @@ get_account_summary(Connection, Params, Options) when is_list(Options) ->
     instrument_name   => string(),
     type              := all | limit | algo_all | stop_all | stop_limit | stop_market | take_all | take_limit | take_market
   }.
-get_open_orders_by_instrument(Connection, Params) when is_map(Params)  ->
+get_open_orders_by_instrument(Connection, Params) ->
   get_open_orders_by_instrument(Connection, Params, []).
 
-get_open_orders_by_instrument(Connection, Params, Options) when is_map(Params), is_list(Options)  ->
+get_open_orders_by_instrument(Connection, Params, Options) ->
   request(Connection, "private/get_open_orders_by_instrument", Params, Options).
 
 %% ==============================================================
@@ -281,10 +281,10 @@ get_open_orders_by_instrument(Connection, Params, Options) when is_map(Params), 
     kind       := instrument_kind(),
     type       := all | limit | algo_all | stop_all | stop_limit | stop_market | take_all | take_limit | take_market
   }.
-get_open_orders_by_currency(Connection, Params) when is_map(Params)  ->
+get_open_orders_by_currency(Connection, Params) ->
   get_open_orders_by_currency(Connection, Params, []).
 
-get_open_orders_by_currency(Connection, Params, Options) when is_map(Params), is_list(Options)  ->
+get_open_orders_by_currency(Connection, Params, Options) ->
   request(Connection, "private/get_open_orders_by_currency", Params, Options).
 
 %% ==============================================================
@@ -312,7 +312,7 @@ get_instruments(Connection, Params) ->
   get_instruments(Connection, Params, []).
 
 -spec get_instruments(connection(), params(), options()) -> result().
-get_instruments(Connection, Params, Options) when is_list(Options) ->
+get_instruments(Connection, Params, Options) ->
   request(Connection, "public/get_instruments", Params, Options).
 
 %% ==============================================================
@@ -322,7 +322,7 @@ get_currencies(Connection) ->
   get_currencies(Connection, []).
 
 -spec get_currencies(connection(), options()) -> result().
-get_currencies(Connection, Options) when is_list(Options) ->
+get_currencies(Connection, Options) ->
   request(Connection, "public/get_currencies", #{}, Options).
 
 %% ==============================================================
@@ -339,9 +339,11 @@ get_index(Connection, Params, Options) ->
 
 %% ==============================================================
 
-request(Pid, Action, Data) ->
+request(Pid, Action, Data) when is_map(Data) ->
   deribit_api_utils:request(Pid, Action, Data).
-request(Pid, Action, Data, []) ->
-  deribit_api_utils:request(Pid, Action, Data);
-request(Pid, Action, Data, Options) when is_list(Options) ->
+request(Pid, Action, Data, async) when is_map(Data) ->
+  deribit_api_utils:request(Pid, Action, Data, [async]);
+request(Pid, Action, Data, {async, Fun}) when is_map(Data) ->
+  deribit_api_utils:request(Pid, Action, Data, [{async, Fun}]);
+request(Pid, Action, Data, Options) when is_map(Data) and is_list(Options) ->
   deribit_api_utils:request(Pid, Action, Data, Options).
