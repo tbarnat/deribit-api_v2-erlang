@@ -16,6 +16,7 @@
   get_open_orders_by_currency/2, get_open_orders_by_currency/3,
   get_open_orders_by_instrument/2, get_open_orders_by_instrument/3,
   get_position/2, get_position/3,
+  get_positions/2, get_positions/3,
   get_currencies/1, get_currencies/2,
   get_instruments/2, get_instruments/3,
   get_index/2, get_index/3
@@ -305,11 +306,25 @@ get_position(Connection, Params, Options) ->
 
 %% ==============================================================
 
+-spec get_positions(connection(), Params) -> result() when
+  Params :: #{
+    currency   => currency(),
+    kind       := instrument_kind()
+  }.
+get_positions(Connection, Params) ->
+  get_positions(Connection, Params, []).
+
+-spec get_positions(connection(), params(), options()) -> result().
+get_positions(Connection, Params, Options) ->
+  request(Connection, "private/get_positions", Params, Options).
+
+%% ==============================================================
+
 -spec get_instruments(connection(), Params) -> result() when
   Params :: #{
-  currency   := currency(),
-  kind       => instrument_kind(),
-  expired    => boolean()
+    currency   := currency(),
+    kind       => instrument_kind(),
+    expired    => boolean()
   }.
 get_instruments(Connection, Params) ->
   get_instruments(Connection, Params, []).
