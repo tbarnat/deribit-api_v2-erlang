@@ -66,20 +66,23 @@ open(Url, Credentials) ->
   Scheme = maps:get(scheme, UriMap, "wss"),
   case Scheme of
     "wss" ->
-      Host = maps:get(host, UriMap),
-      ConnectionResult = deribit_api_websocket:start(Host, 443),
-      case ConnectionResult of
-        {ok, ConnectionPid} ->
-          possibly_authorize_connection(ConnectionPid, Credentials);
-        Error ->
-          Error
-      end;
+      open_websocket(UriMap, Credentials);
     "ws" ->
-      {error, use_secure_websocket_protocol};
+      open_websocket(UriMap, Credentials);
     Http when (Http =:= "http" orelse Http =:= "https") ->
       {error, rest_api_not_supported__use_websocket};
     _ ->
       {error, wrong_url}
+  end.
+
+open_websocket(UriMap, Credentials) ->
+  Host = maps:get(host, UriMap),
+  ConnectionResult = deribit_api_websocket:start(Host, 443),
+  case ConnectionResult of
+    {ok, ConnectionPid} ->
+      possibly_authorize_connection(ConnectionPid, Credentials);
+    Error ->
+      Error
   end.
 
 %% private function
