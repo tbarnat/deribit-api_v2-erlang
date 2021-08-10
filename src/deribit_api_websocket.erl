@@ -115,7 +115,7 @@ handle_info({gun_upgrade, _ConnPid, _Ref, _Protocols, _Headers}, #state{ parent 
   Parent ! {self(), connection_up},
   {noreply, State#state{state = up, last_pong = os:timestamp()}};
 handle_info({gun_up, Connection, http}, State) ->
-  gun:ws_upgrade(Connection, "/ws/api/v2/"), %%"/ws/api/v1/"
+  gun:ws_upgrade(Connection, "/ws/api/v2"),
   {noreply, State#state{ connection = Connection, state = upgrading, last_pong = os:timestamp()}};
 handle_info({gun_error, _Pid, _Ref, _Reason} = _Err, #state{} = State) ->
   {stop, connection_broken, State};
