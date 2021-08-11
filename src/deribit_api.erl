@@ -19,7 +19,7 @@
   get_positions/2, get_positions/3,
   get_currencies/1, get_currencies/2,
   get_instruments/2, get_instruments/3,
-  get_index/2, get_index/3
+  get_index_price/2, get_index_price/3
 
 ]).
 
@@ -351,15 +351,15 @@ get_currencies(Connection, Options) ->
 
 %% ==============================================================
 
--spec get_index(connection(), Params) -> result() when
+-spec get_index_price(connection(), Params) -> result() when
   Params :: #{
-    currency   := currency()
+    index_name   => btc_usd | eth_usd | btc_usdt | eth_usdt
   }.
-get_index(Connection, Params) ->
-  get_index(Connection, Params, []).
+get_index_price(Connection, Params) ->
+  get_index_price(Connection, Params, []).
 
-get_index(Connection, Params, Options) ->
-  request(Connection, "public/get_index", Params, Options).
+get_index_price(Connection, Params, Options) ->
+  request(Connection, "public/get_index_price", Params, Options).
 
 %% ==============================================================
 
