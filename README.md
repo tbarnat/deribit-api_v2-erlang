@@ -29,8 +29,8 @@ receive
 end,
 CancelSpec = #{ instrument_name => <<"ETH-PERPETUAL">>},
 deribit_api:cancel_all_by_instrument(Connection, CancelSpec, {async,
-  fun (SellRes) ->
-    io:format("cancel by instrument result: ~p~n" ,[SellRes])
+  fun (CancelRes) ->
+    io:format("cancel by instrument result: ~p~n" ,[CancelRes])
   end}),
 ```
 
