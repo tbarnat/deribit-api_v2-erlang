@@ -20,7 +20,7 @@
   get_currencies/1, get_currencies/2,
   get_instrument/2, get_instrument/3,
   get_instruments/2, get_instruments/3,
-  get_index/2, get_index/3
+  get_index_price/2, get_index_price/3
 
 ]).
 
@@ -65,22 +65,28 @@ open(websocket, Credentials) ->
 open(Url, Credentials) ->
   UriMap = uri_string:parse(Url),
   Scheme = maps:get(scheme, UriMap, "wss"),
-  case Scheme of
-    "wss" ->
-      Host = maps:get(host, UriMap),
-      ConnectionResult = deribit_api_websocket:start(Host, 443),
-      case ConnectionResult of
-        {ok, ConnectionPid} ->
-          possibly_authorize_connection(ConnectionPid, Credentials);
-        Error ->
-          Error
-      end;
-    "ws" ->
-      {error, use_secure_websocket_protocol};
-    Http when (Http =:= "http" orelse Http =:= "https") ->
+  Port = maps:get(port, UriMap, undefined),
+  case {Scheme, Port} of
+    {"wss", undefined} ->
+      open_websocket(UriMap, Credentials, 443);
+    {"ws", undefined} ->
+      open_websocket(UriMap, Credentials, 80);
+    {WsScheme, Port} when (WsScheme =:= "ws" orelse WsScheme =:= "wss") ->
+      open_websocket(UriMap, Credentials, Port);
+    {Http, Port} when (Http =:= "http" orelse Http =:= "https") ->
       {error, rest_api_not_supported__use_websocket};
     _ ->
       {error, wrong_url}
+  end.
+
+open_websocket(UriMap, Credentials, Port) ->
+  Host = maps:get(host, UriMap),
+  ConnectionResult = deribit_api_websocket:start(Host, Port),
+  case ConnectionResult of
+    {ok, ConnectionPid} ->
+      possibly_authorize_connection(ConnectionPid, Credentials);
+    Error ->
+      Error
   end.
 
 %% private function
@@ -359,15 +365,15 @@ get_currencies(Connection, Options) ->
 
 %% ==============================================================
 
--spec get_index(connection(), Params) -> result() when
+-spec get_index_price(connection(), Params) -> result() when
   Params :: #{
-    currency   := currency()
+    index_name   => btc_usd | eth_usd | btc_usdt | eth_usdt
   }.
-get_index(Connection, Params) ->
-  get_index(Connection, Params, []).
+get_index_price(Connection, Params) ->
+  get_index_price(Connection, Params, []).
 
-get_index(Connection, Params, Options) ->
-  request(Connection, "public/get_index", Params, Options).
+get_index_price(Connection, Params, Options) ->
+  request(Connection, "public/get_index_price", Params, Options).
 
 %% ==============================================================
 
