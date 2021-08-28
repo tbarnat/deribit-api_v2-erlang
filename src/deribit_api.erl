@@ -18,6 +18,7 @@
   get_position/2, get_position/3,
   get_positions/2, get_positions/3,
   get_currencies/1, get_currencies/2,
+  get_instrument/2, get_instrument/3,
   get_instruments/2, get_instruments/3,
   get_index_price/2, get_index_price/3,
   request/3, request/4
@@ -323,6 +324,19 @@ get_positions(Connection, Params) ->
 -spec get_positions(connection(), params(), options()) -> result().
 get_positions(Connection, Params, Options) ->
   request(Connection, "private/get_positions", Params, Options).
+
+%% ==============================================================
+
+-spec get_instrument(connection(), Params) -> result() when
+  Params :: #{
+    instrument_name := instrument()
+  }.
+get_instrument(Connection, Params) ->
+  get_instrument(Connection, Params, []).
+
+-spec get_instrument(connection(), params(), options()) -> result().
+get_instrument(Connection, Params, Options) ->
+  request(Connection, "public/get_instrument", Params, Options).
 
 %% ==============================================================
 
