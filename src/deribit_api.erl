@@ -19,8 +19,8 @@
   get_positions/2, get_positions/3,
   get_currencies/1, get_currencies/2,
   get_instruments/2, get_instruments/3,
-  get_index_price/2, get_index_price/3
-
+  get_index_price/2, get_index_price/3,
+  request/3, request/4
 ]).
 
 -type connection()            :: pid().
