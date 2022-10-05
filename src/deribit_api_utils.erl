@@ -2,27 +2,12 @@
 
 -export([
   to_string/1,
-  generate_signature/4,
   to_binary/1,
   transform_map_keys_to_atom/1,
   request/3, request/4
 ]).
 
 -define(TIMEOUT, 5000).
-
-generate_signature(Key, Secret, Uri, Data) ->
-  Tstamp = io_lib:format("~w", [os:system_time(milli_seconds)]),
-  StartingData = #{
-    "_" => Tstamp,
-    "_ackey" => Key,
-    "_acsec" => Secret,
-    "_action" => Uri
-  },
-  AllData = maps:merge(StartingData, Data),
-
-  ParamsString = deribit_api_utils:to_string(AllData),
-  Hash = erlang:binary_to_list(base64:encode(crypto:hash(sha256, ParamsString))),
-  lists:flatten(Key ++ "." ++ Tstamp ++ "." ++ Hash).
 
 to_binary(Data) when is_binary(Data) ->
   Data;
@@ -51,7 +36,7 @@ transform_map_keys_to_atom(Map) ->
         maps:put(Key, NewVal, Acc)
     end
   end, #{}, maps:keys(Map)).
-  
+
 to_string(List) when is_list(List) ->
   lists:flatten(lists:join("&", lists:map(fun(El) -> to_string(El) end, List)));
 to_string(Map) when is_map(Map) ->

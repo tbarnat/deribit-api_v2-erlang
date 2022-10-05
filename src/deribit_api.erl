@@ -1,320 +1,387 @@
 -module(deribit_api).
 
 -export([
-  open/0, open/1, open/2, open/3,
+%% only essentials
+  open/0, open/1, open/2,
   close/1,
-  account/1, account/2,
   buy/2, buy/3,
   sell/2, sell/3,
-  cancel/2, cancel/3,
-  cancelall/2, cancelall/3,
+  edit_by_label/2, edit_by_label/3,
   edit/2, edit/3,
-  getopenorders/2, getopenorders/3,
-  positions/1, positions/2,
-  orderhistory/1, orderhistory/2, orderhistory/3,
-  tradehistory/2, tradehistory/3,
-  getinstruments/1, getinstruments/2,
-  getcurrencies/1, getcurrencies/2,
-  getorderbook/2, getorderbook/3,
-  getsummary/2, getsummary/3,
-  index/1, index/2, index/3,
-  getlasttrades/2, getlasttrades/3,
-  subscribe/2, subscribe/3,
-  unsubscribe/1, unsubscribe/2
+  cancel/2, cancel/3,
+  cancel_all_by_currency/2, cancel_all_by_currency/3,
+  cancel_all_by_instrument/2, cancel_all_by_instrument/3,
+  cancel_all/1, cancel_all/2,
+  get_account_summary/2, get_account_summary/3,
+  get_open_orders_by_currency/2, get_open_orders_by_currency/3,
+  get_open_orders_by_instrument/2, get_open_orders_by_instrument/3,
+  get_position/2, get_position/3,
+  get_positions/2, get_positions/3,
+  get_currencies/1, get_currencies/2,
+  get_instrument/2, get_instrument/3,
+  get_instruments/2, get_instruments/3,
+  get_index_price/2, get_index_price/3,
+  request/3, request/4
 ]).
 
--type connection()      :: pid().
--type connection_options() :: websocket | http | url().
--type url()             :: string().
--type instrument()      :: string() | binary().
--type trade_id()        :: integer().
--type result()          :: {ok, any()} | {error, any()} | reference() | ok.
--type option()          :: {async} | {async, fun( (result()) -> ok )}.
--type options()         :: list(option()).
+-type connection()            :: pid().
+-type connection_options()    :: websocket | http | url().
+-type access_key()            :: string().
+-type access_secret()         :: string().
+-type authorize_credentials() :: { access_key(), access_secret() }.
+-type url()                   :: string().
+-type currency ()             :: btc | eth | usdt.
+-type instrument()            :: string() | binary().
+-type instrument_kind()       :: future | option.
+-type params()                :: any(). %% This is just a placeholder; The specific params definition is made for a preceding no-option function
+-type result()                :: {ok, any()} | {error, any()} | reference() | ok.
+-type option()                :: {async} | {async, fun( (result()) -> ok )}.
+-type options()               :: list(option()).
+
 
 -spec open() -> Result when
   Result     :: {ok, connection()} | {error, Reason},
   Reason     :: string() | binary().
 open() ->
-  open("", "", websocket).
+  open(websocket, {}).
 
--spec open(connection_options()) -> Result when
-  Result     :: {ok, connection()} | {error, Reason},
-  Reason     :: string() | binary().
-open(Mode) ->
-  open("", "", Mode).
 
--spec open(AccessKey, AccessSecret) -> Result when
-  AccessKey    :: string(),
-  AccessSecret :: string(),
+-spec open(Credentials) -> Result when
+  Credentials  :: authorize_credentials(),
   Result       :: {ok, connection()} | {error, Reason},
   Reason       :: string() | binary().
-open(AccessKey, AccessSecret) ->
-  open(AccessKey, AccessSecret, websocket).
+open({AccessKey, AccessSecret}) ->
+  open(websocket, {AccessKey, AccessSecret}).
 
--spec open(AccessKey, AccessSecret, connection_options()) -> Result when
-  AccessKey    :: string(),
-  AccessSecret :: string(),
+
+-spec open(connection_options(), Credentials) -> Result when
+  Credentials  :: authorize_credentials(),
   Result       :: {ok, connection()} | {error, Reason},
   Reason       :: string() | binary().
-
-open(AccessKey, AccessSecret, http) ->
-  open(AccessKey, AccessSecret, "https://www.deribit.com");
-open(AccessKey, AccessSecret, websocket) ->
-  open(AccessKey, AccessSecret, "wss://www.deribit.com");
-open(AccessKey, AccessSecret, Url) ->
-  case http_uri:parse(Url, [{scheme_defaults, [{ws, 80}, {wss, 443} | http_uri:scheme_defaults()]}]) of
-    {ok, {Protocol, _, Host, Port, _, _}} ->
-      if
-        Protocol =:= http orelse Protocol =:= https ->
-          deribit_api_http:start(AccessKey, AccessSecret, Protocol, Host, Port);
-        Protocol =:= ws orelse Protocol =:= wss ->
-          deribit_api_websocket:start(AccessKey, AccessSecret, Host, Port)
-      end;
+open(http, Credentials) ->
+  open("https://www.deribit.com", Credentials);
+open(websocket, Credentials) ->
+  open("wss://www.deribit.com/ws/api/v2", Credentials);
+open(Url, Credentials) ->
+  UriMap = uri_string:parse(Url),
+  Scheme = maps:get(scheme, UriMap, "wss"),
+  Port = maps:get(port, UriMap, undefined),
+  case {Scheme, Port} of
+    {"wss", undefined} ->
+      open_websocket(UriMap, Credentials, 443);
+    {"ws", undefined} ->
+      open_websocket(UriMap, Credentials, 80);
+    {WsScheme, Port} when (WsScheme =:= "ws" orelse WsScheme =:= "wss") ->
+      open_websocket(UriMap, Credentials, Port);
+    {Http, Port} when (Http =:= "http" orelse Http =:= "https") ->
+      {error, rest_api_not_supported__use_websocket};
     _ ->
       {error, wrong_url}
+  end.
+
+open_websocket(UriMap, Credentials, Port) ->
+  Host = maps:get(host, UriMap),
+  ConnectionResult = deribit_api_websocket:start(Host, Port),
+  case ConnectionResult of
+    {ok, ConnectionPid} ->
+      possibly_authorize_connection(ConnectionPid, Credentials);
+    Error ->
+      Error
+  end.
+
+%% private function
+possibly_authorize_connection(ConnectionPid, {}) ->
+  {ok, ConnectionPid};
+possibly_authorize_connection(ConnectionPid, {AccessKey,AccessSecret}) ->
+  AuthParams = #{
+    grant_type => <<"client_credentials">>,
+    client_id => list_to_binary(AccessKey),
+    client_secret => list_to_binary(AccessSecret)
+  },
+  AuthResult = request(ConnectionPid, "public/auth", AuthParams),
+  case AuthResult of
+    {ok, _} ->
+      {ok, ConnectionPid};
+    AuthError ->
+      {error, {could_not_auth_the_ws_connection, AuthError}}
   end.
 
 -spec close(connection()) -> ok.
 close(Connection) ->
   gen_server:stop(Connection).
 
--spec buy(connection(), Params) -> result() when
-    Params     :: #{
-                    instrument := instrument(),
-                    quantity   := number(),
-                    price      := number(),
-                    post_only  => boolean(),
-                    label      => string() | binary()
-                   }.
-buy(Connection, Params) when is_map(Params) ->
-  request(Connection, "/api/v1/private/buy", Params).
+%% ==============================================================
 
--spec buy(connection(), Params, options()) -> result() when
-    Params     :: #{
-                    instrument := instrument(),
-                    quantity   := number(),
-                    price      := number(),
-                    post_only  => boolean(),
-                    label      => string() | binary()
-                  }.
-buy(Connection, Params, Options) when is_map(Params), is_list(Options)  ->
-  request(Connection, "/api/v1/private/buy", Params, Options).
+-spec buy(connection(), Params) -> result() when
+  Params :: #{
+    instrument_name   := instrument(),
+    amount            := number(),
+    type              => limit | stop_limit | take_limit | market | stop_market | take_market | market_limit,
+    label             => string() | binary(),
+    price             => number(),
+    time_in_force     => good_til_cancelled | good_til_day | fill_or_kill | immediate_or_cancel,
+    max_show          => number(),
+    post_only         => boolean(),
+    reject_post_only  => boolean(),
+    reduce_only       => boolean(),
+    trigger_price     => number(),
+    trigger           => index_price | mark_price | last_price,
+    advanced          => usd | implv,
+    mmp               => boolean()
+  }.
+buy(Connection, Params) when is_map(Params) ->
+  buy(Connection, Params, []).
+
+-spec buy(connection(), params(), options()) -> result().
+buy(Connection, Params, Options) when is_map(Params)  ->
+  request(Connection, "private/buy", Params, Options).
+
+%% ==============================================================
 
 -spec sell(connection(), Params) -> result() when
-  Params     :: #{
-                  instrument := instrument(),
-                  quantity   := number(),
-                  price      := number(),
-                  post_only  => boolean(),
-                  label      => string() | binary()
-                 }.
-sell(Connection, Params) when is_map(Params)  ->
-  request(Connection, "/api/v1/private/sell", Params).
+  Params :: #{
+    instrument_name   := instrument(),
+    amount            := number(),
+    type              => limit | stop_limit | take_limit | market | stop_market | take_market | market_limit,
+    label             => string() | binary(),
+    price             => number(),
+    time_in_force     => good_til_cancelled | good_til_day | fill_or_kill | immediate_or_cancel,
+    max_show          => number(),
+    post_only         => boolean(),
+    reject_post_only  => boolean(),
+    reduce_only       => boolean(),
+    trigger_price     => number(),
+    trigger           => index_price | mark_price | last_price,
+    advanced          => usd | implv,
+    mmp               => boolean()
+  }.
+sell(Connection, Params) ->
+  sell(Connection, Params, []).
 
--spec sell(connection(), Params, options()) -> result() when
-  Params     :: #{ instrument := instrument(),
-                   quantity   := number(),
-                   post_only  => boolean(),
-                   label      => string() | binary()
-                 }.
-sell(Connection, Params, Options) when is_map(Params), is_list(Options)  ->
-  request(Connection, "/api/v1/private/sell", Params, Options).
+-spec sell(connection(), params(), options()) -> result().
+sell(Connection, Params, Options) ->
+  request(Connection, "private/sell", Params, Options).
 
--spec cancel(connection(), integer()) -> result().
-cancel(Connection, OrderId) ->
-  request(Connection, "/api/v1/private/cancel", #{ orderId => OrderId }).
-
--spec cancel(connection(), integer(), options()) -> result().
-cancel(Connection, OrderId, Options) when is_list(Options) ->
-  request(Connection, "/api/v1/private/cancel", #{ orderId => OrderId }, Options).
-
-
--spec cancelall(connection(), Type) -> result() when
-  Type     :: all | futures | options.
-cancelall(Connection, Type) ->
-  request(Connection, "/api/v1/private/cancelall", #{ type => Type }).
-
--spec cancelall(connection(), Type, options()) -> result() when
-  Type     :: all | futures | options.
-cancelall(Connection, Type, Options) when is_list(Options) ->
-  request(Connection, "/api/v1/private/cancelall", #{ type => Type }, Options).
-
--spec account(connection()) -> result().
-account(Connection) ->
-  request(Connection, "/api/v1/private/account", #{}).
-
--spec account(connection(), options()) -> result().
-account(Connection, Options) when is_list(Options) ->
-  request(Connection, "/api/v1/private/account", #{}, Options).
+%% ==============================================================
 
 -spec edit(connection(), Params) -> result() when
-  Params     :: #{
-                  orderId  := integer(),
-                  quantity := number(),
-                  price    := number()
-                }.
-edit(Connection, Params) when is_map(Params)  ->
-  request(Connection, "/api/v1/private/edit", Params).
+  Params :: #{
+    order_id          := string(),
+    amount            := number(),
+    price             => number(),
+    post_only         => boolean(),
+    reduce_only       => boolean(),
+    reject_post_only  => boolean(),
+    advanced          => usd | implv,
+    trigger_price     => number(),
+    mmp               => boolean()
+  }.
+edit(Connection, Params) ->
+  edit(Connection, Params, []).
 
--spec edit(connection(), Params, options()) -> result() when
-  Params     :: #{
-                  orderId  := integer(),
-                  quantity := number(),
-                  price    := number()
-                }.
-edit(Connection, Params, Options) when is_map(Params), is_list(Options)  ->
-  request(Connection, "/api/v1/private/edit", Params, Options).
+-spec edit(connection(), params(), options()) -> result().
+edit(Connection, Params, Options) ->
+  request(Connection, "private/edit", Params, Options).
 
--spec getopenorders(connection(), Params) -> result() when
-  Params     :: #{
-                  instrument => instrument(),
-                  orderId    => integer()
-                }.
-getopenorders(Connection, Params) when is_map(Params)  ->
-  request(Connection, "/api/v1/private/getopenorders", Params).
+%% ==============================================================
 
--spec getopenorders(connection(), Params, options()) -> result() when
-  Params     :: #{
-                  instrument => instrument(),
-                  orderId    => integer()
-                }.
-getopenorders(Connection, Params, Options) when is_map(Params), is_list(Options)  ->
-  request(Connection, "/api/v1/private/getopenorders", Params, Options).
+-spec edit_by_label(connection(), Params) -> result() when
+  Params :: #{
+  label             := string(),
+  instrument_name   := string(),
+  amount            := number(),
+  price             => number(),
+  post_only         => boolean(),
+  reduce_only       => boolean(),
+  reject_post_only  => boolean(),
+  advanced          => usd | implv,
+  trigger_price     => number(),
+  mmp               => boolean()
+  }.
+edit_by_label(Connection, Params) ->
+  edit_by_label(Connection, Params, []).
 
--spec positions(connection()) -> result().
-positions(Connection) ->
-  request(Connection, "/api/v1/private/positions", #{}).
+-spec edit_by_label(connection(), params(), options()) -> result().
+edit_by_label(Connection, Params, Options)  ->
+  request(Connection, "private/edit_by_label", Params, Options).
 
--spec positions(connection(), options()) -> result().
-positions(Connection, Options) ->
-  request(Connection, "/api/v1/private/positions", #{}, Options).
+%% ==============================================================
 
--spec orderhistory(connection())  -> result().
-orderhistory(Connection) ->
-  request(Connection, "/api/v1/private/orderhistory", #{}).
+-spec cancel(connection(), Params) -> result() when
+  Params :: #{
+    order_id   => boolean()
+  }.
+cancel(Connection, Params) ->
+  cancel(Connection, Params, []).
 
--spec orderhistory(connection(), integer()) -> result();
-                  (connection(), options()) -> result().
-orderhistory(Connection, Count) when is_integer(Count) ->
-  request(Connection, "/api/v1/private/orderhistory", #{ count => Count });
-orderhistory(Connection, Options) when is_list(Options) ->
-  request(Connection, "/api/v1/private/orderhistory", #{}, Options).
+-spec cancel(connection(), params(), options()) -> result().
+cancel(Connection, Params, Options) ->
+  request(Connection, "private/cancel", Params, Options).
 
--spec orderhistory(connection(), integer(), options()) -> result().
-orderhistory(Connection, Count, Options) when is_integer(Count) ->
-  request(Connection, "/api/v1/private/orderhistory", #{ count => Count }, Options).
+%% ==============================================================
 
--spec tradehistory(connection(), Params) -> result() when
-  Params     :: #{
-                  instrument   := instrument() | all | futures | options,
-                  count        => integer(),
-                  startTradeId => trade_id()
-                }.
-tradehistory(State, Params) when is_map(Params)  ->
-  request(State, "/api/v1/private/tradehistory", Params).
+-spec cancel_all_by_instrument(connection(), Params) -> result() when
+  Params :: #{
+    instrument_name   => string(),
+    type              := all | limit | stop
+  }.
+cancel_all_by_instrument(Connection, Params) ->
+  cancel_all_by_instrument(Connection, Params, []).
 
--spec tradehistory(connection(), Params, options()) -> result() when
-  Params     :: #{
-                  instrument   := instrument() | all | futures | options,
-                  count        => integer(),
-                  startTradeId => trade_id()
-                }.
-tradehistory(Connection, Params, Options) when is_map(Params), is_list(Options)  ->
-  request(Connection, "/api/v1/private/tradehistory", Params, Options).
+-spec cancel_all_by_instrument(connection(), params(), options()) -> result().
+cancel_all_by_instrument(Connection, Params, Options) ->
+  request(Connection, "private/cancel_all_by_instrument", Params, Options).
 
--spec getinstruments(connection()) -> result().
-getinstruments(Connection) ->
-  request(Connection, "/api/v1/public/getinstruments", #{}).
+%% ==============================================================
 
--spec getinstruments(connection(), options()) -> result().
-getinstruments(Connection, Options) when is_list(Options) ->
-  request(Connection, "/api/v1/public/getinstruments", #{}, Options).
+-spec cancel_all_by_currency(connection(), Params) -> result() when
+  Params :: #{
+    currency   => currency(),
+    kind       := instrument_kind(),
+    type       := all | limit | stop
+  }.
+cancel_all_by_currency(Connection, Params) ->
+  cancel_all_by_currency(Connection, Params, []).
 
--spec getcurrencies(connection()) -> result().
-getcurrencies(Connection) ->
-  request(Connection, "/api/v1/public/getcurrencies", #{}).
+-spec cancel_all_by_currency(connection(), params(), options()) -> result().
+cancel_all_by_currency(Connection, Params, Options) ->
+  request(Connection, "private/cancel_all_by_currency", Params, Options).
 
--spec getcurrencies(connection(), options()) -> result().
-getcurrencies(Connection, Options) when is_list(Options) ->
-  request(Connection, "/api/v1/public/getcurrencies", #{}, Options).
+%% ==============================================================
 
--spec getorderbook(connection(), instrument()) -> result().
-getorderbook(State, Instrument) ->
-  request(State, "/api/v1/public/getorderbook", #{ instrument => Instrument }).
+-spec cancel_all(connection()) -> result().
+cancel_all(Connection) ->
+  cancel_all(Connection, []).
 
--spec getorderbook(connection(), instrument(), options()) -> result().
-getorderbook(State, Instrument, Options) when is_list(Options) ->
-  request(State, "/api/v1/public/getorderbook", #{ instrument => Instrument }, Options).
+-spec cancel_all(connection(), options()) -> result().
+cancel_all(Connection, Options) ->
+  request(Connection, "private/cancel_all", Options).
 
--spec getsummary(connection(), instrument()) -> result().
-getsummary(Connection, Instrument) ->
-  request(Connection, "/api/v1/public/getsummary", #{ instrument => Instrument }).
+%% ==============================================================
 
--spec getsummary(connection(), instrument(), options()) -> result().
-getsummary(Connection, Instrument, Options) when is_list(Options) ->
-  request(Connection, "/api/v1/public/getsummary", #{ instrument => Instrument }, Options).
+-spec get_account_summary(connection(), Params) -> result() when
+  Params :: #{
+    currency   := currency(),
+    extended   => boolean()
+  }.
+get_account_summary(Connection, Params) ->
+  get_account_summary(Connection, Params, []).
 
--spec index(connection()) -> result().
-index(Connection) ->
-  request(Connection, "/api/v1/public/index", #{}).
+-spec get_account_summary(connection(), params(), options()) -> result().
+get_account_summary(Connection, Params, Options) ->
+  request(Connection, "private/get_account_summary", Params, Options).
 
--spec index(connection(), options()) -> result().
-index(Connection, Options) when is_list(Options) ->
-  request(Connection, "/api/v1/public/index", #{}, Options).
+%% ==============================================================
 
--spec index(connection(), atom(), options()) -> result().
-index(Connection, Currency, Options) when is_atom(Currency) andalso is_list(Options) ->
-  request(Connection, "/api/v1/public/index", #{currency => Currency}).
+-spec get_open_orders_by_instrument(connection(), Params) -> result() when
+  Params :: #{
+    instrument_name   => string(),
+    type              := all | limit | algo_all | stop_all | stop_limit | stop_market | take_all | take_limit | take_market
+  }.
+get_open_orders_by_instrument(Connection, Params) ->
+  get_open_orders_by_instrument(Connection, Params, []).
 
+get_open_orders_by_instrument(Connection, Params, Options) ->
+  request(Connection, "private/get_open_orders_by_instrument", Params, Options).
 
--spec getlasttrades(connection(), Params) -> result() when
-  Params     :: #{
-                  instrument := instrument(),
-                  since      => trade_id(),
-                  count      => integer()
-                }.
-getlasttrades(Connection, Params) when is_map(Params)  ->
-  request(Connection, "/api/v1/public/getlasttrades", Params).
+%% ==============================================================
 
--spec getlasttrades(connection(), Params, options()) -> result() when
-  Params     :: #{
-                  instrument := instrument(),
-                  since      => trade_id(),
-                  count      => integer()
-                }.
-getlasttrades(Connection, Params, Options) when is_map(Params), is_list(Options) ->
-  request(Connection, "/api/v1/public/getlasttrades", Params, Options).
+-spec get_open_orders_by_currency(connection(), Params) -> result() when
+  Params :: #{
+    currency   => currency(),
+    kind       := instrument_kind(),
+    type       := all | limit | algo_all | stop_all | stop_limit | stop_market | take_all | take_limit | take_market
+  }.
+get_open_orders_by_currency(Connection, Params) ->
+  get_open_orders_by_currency(Connection, Params, []).
 
+get_open_orders_by_currency(Connection, Params, Options) ->
+  request(Connection, "private/get_open_orders_by_currency", Params, Options).
 
--spec subscribe(connection(), Params) -> result() when
-  Params     :: #{
-                  instrument := list(string()) | [all] | [futures] | [options] | [index],
-                  event      := list(order_book | trade | user_order)
-                }.
-subscribe(Connection, Params) when is_map(Params) ->
-  subscribe(Connection, Params).
+%% ==============================================================
 
--spec subscribe(connection(), Params, options()) -> result() when
-  Params     :: #{
-                  instrument := list(instrument()) | [all] | [futures] | [options] | [index],
-                  event      := list(order_book | trade | user_order)
-                }.
-subscribe(Connection, Params, Options) when is_map(Params), is_list(Options) ->
-  Instruments = maps:get(instrument, Params),
-  Events = maps:get(event, Params),
-  request(Connection, "/api/v1/private/subscribe", #{ instrument => {array, Instruments}, "event" => {array, Events}}, Options).
+-spec get_position(connection(), Params) -> result() when
+  Params :: #{
+    instrument_name   => string()
+  }.
+get_position(Connection, Params) ->
+  get_position(Connection, Params, []).
 
--spec unsubscribe(connection()) -> result().
-unsubscribe(Connection) ->
-  request(Connection, "/api/v1/private/unsubscribe", #{}).
+-spec get_position(connection(), params(), options()) -> result().
+get_position(Connection, Params, Options) ->
+  request(Connection, "private/get_position", Params, Options).
 
--spec unsubscribe(connection(), options()) -> result().
-unsubscribe(Connection, Options) when is_list(Options) ->
-  request(Connection, "/api/v1/private/unsubscribe", #{}, Options).
+%% ==============================================================
 
+-spec get_positions(connection(), Params) -> result() when
+  Params :: #{
+    currency   => currency(),
+    kind       := instrument_kind()
+  }.
+get_positions(Connection, Params) ->
+  get_positions(Connection, Params, []).
 
-request(Pid, Action, Data) ->
-    deribit_api_utils:request(Pid, Action, Data).
-request(Pid, Action, Data, Options) when is_list(Options) ->
-    deribit_api_utils:request(Pid, Action, Data, Options).
+-spec get_positions(connection(), params(), options()) -> result().
+get_positions(Connection, Params, Options) ->
+  request(Connection, "private/get_positions", Params, Options).
+
+%% ==============================================================
+
+-spec get_instrument(connection(), Params) -> result() when
+  Params :: #{
+    instrument_name := instrument()
+  }.
+get_instrument(Connection, Params) ->
+  get_instrument(Connection, Params, []).
+
+-spec get_instrument(connection(), params(), options()) -> result().
+get_instrument(Connection, Params, Options) ->
+  request(Connection, "public/get_instrument", Params, Options).
+
+%% ==============================================================
+
+-spec get_instruments(connection(), Params) -> result() when
+  Params :: #{
+    currency   := currency(),
+    kind       => instrument_kind(),
+    expired    => boolean()
+  }.
+get_instruments(Connection, Params) ->
+  get_instruments(Connection, Params, []).
+
+-spec get_instruments(connection(), params(), options()) -> result().
+get_instruments(Connection, Params, Options) ->
+  request(Connection, "public/get_instruments", Params, Options).
+
+%% ==============================================================
+
+-spec get_currencies(connection()) -> result().
+get_currencies(Connection) ->
+  get_currencies(Connection, []).
+
+-spec get_currencies(connection(), options()) -> result().
+get_currencies(Connection, Options) ->
+  request(Connection, "public/get_currencies", #{}, Options).
+
+%% ==============================================================
+
+-spec get_index_price(connection(), Params) -> result() when
+  Params :: #{
+    index_name   => btc_usd | eth_usd | btc_usdt | eth_usdt
+  }.
+get_index_price(Connection, Params) ->
+  get_index_price(Connection, Params, []).
+
+get_index_price(Connection, Params, Options) ->
+  request(Connection, "public/get_index_price", Params, Options).
+
+%% ==============================================================
+
+request(Pid, Action, Data) when is_map(Data) ->
+  deribit_api_utils:request(Pid, Action, Data).
+request(Pid, Action, Data, async) when is_map(Data) ->
+  deribit_api_utils:request(Pid, Action, Data, [async]);
+request(Pid, Action, Data, {async, Fun}) when is_map(Data) ->
+  deribit_api_utils:request(Pid, Action, Data, [{async, Fun}]);
+request(Pid, Action, Data, Options) when is_map(Data) and is_list(Options) ->
+  deribit_api_utils:request(Pid, Action, Data, Options).

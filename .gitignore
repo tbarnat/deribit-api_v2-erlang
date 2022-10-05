@@ -1,17 +1,13 @@
+# --- IDE:
+.idea
+deribit-api_v2-erlang.iml
+# --- erlang stuff:
 .rebar3
-_*
-.eunit
-*.o
-*.beam
-*.plt
-*.swp
-*.swo
-.erlang.cookie
-ebin
-log
 erl_crash.dump
-.rebar
+rebar3.crashdump
+.erlang.cookie
+.eunit
+# --- other:
+log
 logs
 _build
-.idea
-rebar3.crashdump
