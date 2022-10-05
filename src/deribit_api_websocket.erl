@@ -19,6 +19,7 @@
   port,
   parent,
   connection,
+  stream,
   pids_map = maps:new(),
   notifications_pid = null,
   last_pong
@@ -54,7 +55,7 @@ init([Owner, Host, Port, Parent]) ->
     state = connecting,
     parent = Parent}}.
 
-handle_call({request, Method, Params, Pid}, _From, #state{ id = Id, pids_map = PidsMap, connection = Connection } = State) ->
+handle_call({request, Method, Params, Pid}, _From, #state{ id = Id, pids_map = PidsMap, connection = Connection, stream = StreamRef } = State) ->
   NewId = Id + 1,
   Request = #{
     id => NewId,
@@ -63,13 +64,13 @@ handle_call({request, Method, Params, Pid}, _From, #state{ id = Id, pids_map = P
     params => deribit_api_utils:transform_map_keys_to_atom(Params)
   },
   JsonRequest = jiffy:encode(Request),
-  gun:ws_send(Connection, {text, JsonRequest}),
+  gun:ws_send(Connection, StreamRef, {text, JsonRequest}),
   {reply, NewId, State#state{ pids_map = maps:put(NewId, Pid, PidsMap), id = NewId }};
 handle_call(_Request, _From, State) ->
   {reply, no_action, State}.
 
 handle_cast(ping, State) ->
-  gun:ws_send(State#state.connection, {text, <<"{\"id\":0,\"action\":\"/api/v1/public/ping\"}">>}),
+  gun:ws_send(State#state.connection, State#state.stream, {text, <<"{\"id\":0,\"action\":\"/api/v1/public/ping\"}">>}),
   {noreply, State};
 handle_cast(print_state, State) ->
   {noreply, State};
@@ -115,8 +116,8 @@ handle_info({gun_upgrade, _ConnPid, _Ref, _Protocols, _Headers}, #state{ parent 
   Parent ! {self(), connection_up},
   {noreply, State#state{state = up, last_pong = os:timestamp()}};
 handle_info({gun_up, Connection, http}, State) ->
-  gun:ws_upgrade(Connection, "/ws/api/v2"),
-  {noreply, State#state{ connection = Connection, state = upgrading, last_pong = os:timestamp()}};
+  StreamRef = gun:ws_upgrade(Connection, "/ws/api/v2"),
+  {noreply, State#state{ connection = Connection, stream = StreamRef, state = upgrading, last_pong = os:timestamp()}};
 handle_info({gun_error, _Pid, _Ref, _Reason} = _Err, #state{} = State) ->
   {stop, connection_broken, State};
 handle_info({gun_down, _Pid, _, _, _, _}, #state{} = State) ->

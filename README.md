@@ -1,5 +1,13 @@
 # Erlang library for [Deribit API v2](https://docs.deribit.com/)
 
+# !DEPRECATED!
+
+### V1 API will be shut down beginning October in favor of the [Deribit V2 API](https://docs.deribit.com/v2/#deribit-api-v2-0-0)
+### Please make sure to update your codebase to prepare for the transition.
+### You can refer to the V2 API clients available [here](https://github.com/deribit/deribit-api-clients/)
+
+# !DEPRECATED!
+
 ## Description
 
 This package is a basic [Deribit API](https://docs.deribit.com/) client.
