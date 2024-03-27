@@ -46,7 +46,7 @@ start(Host, Port) ->
 
 init([Owner, Host, Port, Parent]) ->
   monitor(process, Owner),
-  {ok, Connection} = gun:open(Host, Port),
+  {ok, Connection} = gun:open(Host, Port, gun_options(Port)),
   {ok, #state{
     owner = Owner,
     host = Host,
@@ -54,6 +54,11 @@ init([Owner, Host, Port, Parent]) ->
     connection = Connection,
     state = connecting,
     parent = Parent}}.
+
+gun_options(443) ->
+  #{protocols => [http], retry => 1, transport => tls, tls_opts => [{verify, verify_none}]};
+gun_options(_) ->
+  #{}.
 
 handle_call({request, Method, Params, Pid}, _From, #state{ id = Id, pids_map = PidsMap, connection = Connection, stream = StreamRef } = State) ->
   NewId = Id + 1,
